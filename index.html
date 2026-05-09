@@ -365,7 +365,7 @@ select,input{font-family:inherit;}
 // ══════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════
-const API_URL = "https://script.google.com/macros/s/AKfycbyNBTQQpGZODDaAt4WyIMtCeUaShQCOIel_iy72YuCEGp1sWZMf9f-OEkKzECf6gWZCEQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxbHOYabu1oEox8RtdDDT0oHbsT5nto43IlNr3Yae_CkdtQYiG5Vl9Qm6b4T9jxRHmsaw/exec";
 
 // ══════════════════════════════════════════════════
 // STATE
@@ -394,37 +394,19 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 function strEq(a,b){ return String(a||"")===String(b||""); }
 
 // ══════════════════════════════════════════════════
-// API — JSONP (CORS সমাধান)
+// API — fetch with redirect follow
 // ══════════════════════════════════════════════════
-function callAPI(params){
-  return new Promise((resolve, reject) => {
-    const cbName = "cb_" + Math.random().toString(36).slice(2);
-    const url = new URL(API_URL);
-    Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
-    url.searchParams.set("callback", cbName);
-
-    window[cbName] = (data) => {
-      delete window[cbName];
-      if(document.body.contains(script)) document.body.removeChild(script);
-      resolve(data);
-    };
-
-    const script = document.createElement("script");
-    script.src = url.toString();
-    script.onerror = () => {
-      delete window[cbName];
-      if(document.body.contains(script)) document.body.removeChild(script);
-      reject(new Error("Network error"));
-    };
-    setTimeout(() => {
-      if(window[cbName]){
-        delete window[cbName];
-        if(document.body.contains(script)) document.body.removeChild(script);
-        reject(new Error("Timeout"));
-      }
-    }, 15000);
-    document.body.appendChild(script);
+async function callAPI(params){
+  const url = new URL(API_URL);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, String(v)));
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    redirect: "follow",
   });
+  const text = await res.text();
+  // strip JSONP wrapper if present e.g. callback({...})
+  const clean = text.replace(/^[^(]+\(/, "").replace(/\);?\s*$/, "");
+  return JSON.parse(clean);
 }
 
 // ══════════════════════════════════════════════════
